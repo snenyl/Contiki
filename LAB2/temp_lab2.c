@@ -58,6 +58,11 @@ struct neighbor {
 /* This #define defines the maximum amount of neighbors we can remember. */
 #define MAX_NEIGHBORS 16
 
+
+static struct neighbor my_neighbors[MAX_NEIGHBORS] = { 0 };
+uint8_t totalDevicesNearby = 0;
+
+
 /* This MEMB() definition defines a memory pool from which we allocate
    neighbor entries. */
 MEMB(neighbors_memb, struct neighbor, MAX_NEIGHBORS);
@@ -174,19 +179,46 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   //localNeightbors
 
 
-  printf("First neighbor %u \n",
-        localNeightbors[0]);
-
-  printf("Second neighbor %u \n",
-        localNeightbors[1]);
-
+  // printf("First neighbor %u \n",
+  //       localNeightbors[0]);
+  //
+  // printf("Second neighbor %u \n",
+  //       localNeightbors[1]);
 
   //localNeightbors[0]
 
-  uint8_t totalN = sizeof(n);
+  uint8_t myFlag = 0;
+  uint8_t ii = 0;
+  uint8_t jj = 0;
 
-  printf("Number of total neighbors: %u \n",
-        totalN);
+  for(ii = 0; ii < totalDevicesNearby; ii++){
+      if (linkaddr_cmp(from, &my_neighbors[ii].addr))
+      {
+  //        my_neighbors[ii].last_lqi = updateLQI(my_neighbors[ii].last_lqi, packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
+          myFlag = 1;
+          break;
+      }
+  }
+
+
+  // If the broadcast comes from a new node, it will now be stored
+  if (myFlag == 0 && totalDevicesNearby < MAX_NEIGHBORS-1){
+      linkaddr_copy(&my_neighbors[totalDevicesNearby].addr, from);
+      //my_neighbors[totalDevicesNearby].addr.u8[0] = from->u8[0];
+      //my_neighbors[totalDevicesNearby].addr.u8[1] = from->u8[1];
+      my_neighbors[totalDevicesNearby].last_lqi = packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY);
+      totalDevicesNearby++;
+      printf("--------------- New freind was located! --------------- \n");
+      printf("Total neighbors: %i\n", totalDevicesNearby);
+  }
+
+
+
+
+//  uint8_t totalN = sizeof(n);
+
+  // printf("Number of total neighbors: %u \n",
+  //       totalN);
 
 
 
