@@ -338,7 +338,7 @@ PROCESS_THREAD(broadcast_process, ev, data)
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(unicast_process, ev, data)
+PROCESS_THREAD(unicast_process, ev, data) //UNICAST SEND!
 {
   PROCESS_EXITHANDLER(unicast_close(&unicast);)
 
@@ -356,18 +356,39 @@ PROCESS_THREAD(unicast_process, ev, data)
 
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
-    /* Pick a random neighbor from our list and send a unicast message to it. */
+    // /* Pick a random neighbor from our list and send a unicast message to it. */
+    // if(list_length(neighbors_list) > 0) {
+    //   randneighbor = random_rand() % list_length(neighbors_list);
+    //   n = list_head(neighbors_list);
+    //   for(i = 0; i < randneighbor; i++) {
+    //     n = list_item_next(n);
+    //   }
+
+    /* Pick the neighbor with lowest LQI from our list and send a unicast message to it. */
+
+    linkaddr_t uniOutAdress;
+
+
     if(list_length(neighbors_list) > 0) {
-      randneighbor = random_rand() % list_length(neighbors_list);
-      n = list_head(neighbors_list);
-      for(i = 0; i < randneighbor; i++) {
-        n = list_item_next(n);
-      }
-      printf("sending unicast to %d.%d\n", n->addr.u8[0], n->addr.u8[1]);
+     uniOutAdress.u8[0] = my_neighbors[0].addr.u8[0];
+     uniOutAdress.u8[1] = my_neighbors[0].addr.u8[1];
+
+     // uniOutAdress.addr.u8[0] = my_neighbors[0].addr.u8[0];
+     // uniOutAdress.addr.u8[1] = my_neighbors[0].addr.u8[1];
+
+
+      // randneighbor = random_rand() % list_length(neighbors_list);
+      // n = list_head(neighbors_list);
+
+      // for(i = 0; i < randneighbor; i++)
+
+      //   n = list_item_next(n);
+
+      printf("sending unicast to %d.%d\n", uniOutAdress.u8[0], uniOutAdress.u8[1]);
 
       msg.type = UNICAST_TYPE_PING;
       packetbuf_copyfrom(&msg, sizeof(msg));
-      unicast_send(&unicast, &n->addr);
+      unicast_send(&unicast, &uniOutAdress);
     }
   }
 
