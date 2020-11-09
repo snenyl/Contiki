@@ -13,6 +13,9 @@ IKT435 - Lab 2 Nylund
 #include "net/rime/rime.h"
 
 #include <stdio.h>
+#include <stdbool.h>
+
+//#include<stdbool.h> //Needed for sorting algorthm.
 
 /* This is the structure of broadcast messages. */
 struct broadcast_message {
@@ -189,7 +192,8 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 
   uint8_t myFlag = 0;
   uint8_t ii = 0;
-  uint8_t jj = 0;
+  uint8_t iii = 0;
+//  uint8_t jj = 0;
 
   for(ii = 0; ii < totalDevicesNearby; ii++){
       if (linkaddr_cmp(from, &my_neighbors[ii].addr))
@@ -199,6 +203,8 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
           break;
       }
   }
+
+
 
 
   // If the broadcast comes from a new node, it will now be stored
@@ -212,15 +218,54 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
       printf("Total neighbors: %i\n", totalDevicesNearby);
   }
 
-  printf("First frend LQI: %i with adress %i.%i\n", my_neighbors[0].last_lqi, my_neighbors[0].addr.u8[0], my_neighbors[0].addr.u8[1]);
-  printf("Second frend LQI: %i with adress %i.%i\n", my_neighbors[1].last_lqi, my_neighbors[1].addr.u8[0], my_neighbors[1].addr.u8[1]);
-  printf("Third frend LQI: %i with adress %i.%i\n", my_neighbors[2].last_lqi, my_neighbors[2].addr.u8[0], my_neighbors[2].addr.u8[1]);
+
+  //function for sorting based of LQI
+  uint8_t arraySize = 3; //totalDevicesNearby
+  uint8_t sortOutput0 = 0;
+  uint8_t sortOutput1 = 0;
 
 
-//  uint8_t totalN = sizeof(n);
+  for(iii = 0; iii < arraySize; iii++){
+    sortOutput0 = my_neighbors[iii].addr.u8[0];
+    sortOutput1 = my_neighbors[iii].addr.u8[1];
+    printf("Addresses: %i.%i\n", sortOutput0,sortOutput1);
+  }
 
-  // printf("Number of total neighbors: %u \n",
-  //       totalN);
+//Print the varables
+printf("First frend LQI: %i with adress %i.%i\n", my_neighbors[0].last_lqi, my_neighbors[0].addr.u8[0], my_neighbors[0].addr.u8[1]);
+printf("Second frend LQI: %i with adress %i.%i\n", my_neighbors[1].last_lqi, my_neighbors[1].addr.u8[0], my_neighbors[1].addr.u8[1]);
+printf("Third frend LQI: %i with adress %i.%i\n", my_neighbors[2].last_lqi, my_neighbors[2].addr.u8[0], my_neighbors[2].addr.u8[1]);
+
+
+//Variables for sort (Type: Bubblesort)
+int iiii, j, tempSortLQI, tempSortAddress0, tempSortAddress1;
+bool swapped;
+
+for(iiii = 0; iiii < totalDevicesNearby - 1; iiii++) // to keep track of number of iteration
+  {
+  swapped = false; // to check whether swapping of two elements happened or not
+  for(j = 0; j < totalDevicesNearby - iiii - 1; j++) // to compare the elements within the particular iteration
+    {
+
+    // swap if any element is greater than its adjacent element
+    if(my_neighbors[j].last_lqi > my_neighbors[j + 1].last_lqi)
+      {
+        tempSortLQI = my_neighbors[j].last_lqi;
+        tempSortAddress0 = my_neighbors[j].addr.u8[0];
+        tempSortAddress1 = my_neighbors[j].addr.u8[1];
+        my_neighbors[j] = my_neighbors[j + 1]; //Moves the one above
+        my_neighbors[j + 1].last_lqi = tempSortLQI;
+        my_neighbors[j + 1].addr.u8[0] = tempSortAddress0;
+        my_neighbors[j + 1].addr.u8[1] = tempSortAddress1;
+        swapped = true;
+      }
+
+    }
+
+  // if swapping of two elements does not happen then break
+  if(swapped == false)
+  break;
+  }
 
 
 
