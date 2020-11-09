@@ -204,15 +204,17 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   // If the broadcast comes from a new node, it will now be stored
   if (myFlag == 0 && totalDevicesNearby < MAX_NEIGHBORS-1){
       linkaddr_copy(&my_neighbors[totalDevicesNearby].addr, from);
-      //my_neighbors[totalDevicesNearby].addr.u8[0] = from->u8[0];
-      //my_neighbors[totalDevicesNearby].addr.u8[1] = from->u8[1];
+      my_neighbors[totalDevicesNearby].addr.u8[0] = from->u8[0];
+      my_neighbors[totalDevicesNearby].addr.u8[1] = from->u8[1];
       my_neighbors[totalDevicesNearby].last_lqi = packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY);
       totalDevicesNearby++;
-      printf("--------------- New freind was located! --------------- \n");
+      printf("--------------- New friend was located! --------------- \n");
       printf("Total neighbors: %i\n", totalDevicesNearby);
   }
 
-
+  printf("First frend LQI: %i with adress %i.%i\n", my_neighbors[0].last_lqi, my_neighbors[0].addr.u8[0], my_neighbors[0].addr.u8[1]);
+  printf("Second frend LQI: %i with adress %i.%i\n", my_neighbors[1].last_lqi, my_neighbors[1].addr.u8[0], my_neighbors[1].addr.u8[1]);
+  printf("Third frend LQI: %i with adress %i.%i\n", my_neighbors[2].last_lqi, my_neighbors[2].addr.u8[0], my_neighbors[2].addr.u8[1]);
 
 
 //  uint8_t totalN = sizeof(n);

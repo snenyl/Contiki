@@ -123,7 +123,7 @@ struct neighbor {
   /* The ->avg_gap contains the average seqno gap that we have seen
      from this neighbor. */
   uint32_t avg_seqno_gap;
-  
+
   struct tempData data[MAX_INFO_PER_NEIGHBOR];
 
 };
@@ -197,7 +197,8 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   uint8_t jj = 0;
 
   for(ii = 0; ii < numbeOfNeighbors; ii++){
-      if (linkaddr_cmp(from, &my_neighbors[ii].addr)){
+      if (linkaddr_cmp(from, &my_neighbors[ii].addr))
+      {
           my_neighbors[ii].last_lqi = updateLQI(my_neighbors[ii].last_lqi, packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
           myFlag = 1;
           break;
@@ -240,7 +241,7 @@ recv_uc(struct unicast_conn *c, const linkaddr_t *from)
   if(msg->type == UNICAST_TYPE_PING) {
     printf("unicast ping received from %d.%d\n Received temp = %c%d.%04d\n",
            from->u8[0], from->u8[1], msg->td.minus, msg->td.tempint, msg->td.tempfrac);
-    
+
     for(ii = 0; ii < numbeOfNeighbors; ii++){
         if (linkaddr_cmp(&my_neighbors[ii].addr, from)){
             for(jj = MAX_INFO_PER_NEIGHBOR; jj > 0; jj--){
@@ -252,14 +253,14 @@ recv_uc(struct unicast_conn *c, const linkaddr_t *from)
             my_neighbors[ii].data[0].minus = msg->td.minus;
             my_neighbors[ii].data[0].tempfrac = msg->td.tempfrac;
             my_neighbors[ii].data[0].tempint = msg->td.tempint;
-            
+
         }
     }
-    
-    
+
+
     msg->type = UNICAST_TYPE_PONG;
     msg->td.minus = 0;
-    msg->td.tempfrac = 0;    
+    msg->td.tempfrac = 0;
     msg->td.tempint = 0;
     packetbuf_copyfrom(msg, sizeof(struct unicast_message));
     /* Send it back to where it came from. */
@@ -303,7 +304,7 @@ PROCESS_THREAD(broadcast_process, ev, data)
 PROCESS_THREAD(unicast_process, ev, data)
 {
   PROCESS_EXITHANDLER(unicast_close(&unicast);)
-    
+
   PROCESS_BEGIN();
     printf("UNICAST_PROCESS BEGIN \n");
 
@@ -317,7 +318,7 @@ PROCESS_THREAD(unicast_process, ev, data)
     uint8_t ii;
 
     etimer_set(&et, CLOCK_SECOND * 2 + random_rand() % (CLOCK_SECOND * 2));
-    
+
 
 
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
