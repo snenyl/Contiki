@@ -5,6 +5,10 @@ IKT435 - Lab 2 Nylund
 
 */
 
+//Temperature includes
+#include "dev/i2cmaster.h"
+#include "dev/tmp102.h"
+#include "dev/leds.h"
 
 #include "contiki.h"
 #include "lib/list.h"
@@ -58,6 +62,14 @@ struct neighbor {
 
 };
 
+/*Temperature struct*/
+struct temperature{
+	int16_t tempint;
+	uint16_t tempfrac;
+	char minus;
+};
+
+
 /* This #define defines the maximum amount of neighbors we can remember. */
 #define MAX_NEIGHBORS 16
 
@@ -84,8 +96,21 @@ static struct unicast_conn unicast;
 #define SEQNO_EWMA_ALPHA 0x040
 
 
+/*
+Defenitions for temperature process.
+*/
+#define TMP102_READ_INTERVAL (CLOCK_SECOND*2	)
+
 //Array for saving nearby nodes:
 int16_t localNeightbors[]={4,2};
+
+uint8_t *globalAdress0ptr;
+uint8_t *globalAdress1ptr;
+
+
+
+
+
 
 
 
@@ -97,11 +122,12 @@ int16_t localNeightbors[]={4,2};
 /* We first declare our two processes. */
 PROCESS(broadcast_process, "Broadcast process");
 PROCESS(unicast_process, "Unicast process");
+PROCESS(temp_process, "Test Temperature process");
 
 /* The AUTOSTART_PROCESSES() definition specifices what processes to
    start when this module is loaded. We put both our processes
    there. */
-AUTOSTART_PROCESSES(&broadcast_process, &unicast_process);
+AUTOSTART_PROCESSES(&broadcast_process, &unicast_process, &temp_process);
 /*---------------------------------------------------------------------------*/
 /* This function is called whenever a broadcast message is received. */
 static void
@@ -293,22 +319,30 @@ recv_uc(struct unicast_conn *c, const linkaddr_t *from)
 {
   struct unicast_message *msg;
 
-  /* Grab the pointer to the incoming data. */
-  msg = packetbuf_dataptr();
+  struct temperature t;
+  memcpy(&t, (struct temperature *)packetbuf_dataptr(), sizeof(t));
+  printf("unicast message received from %d.%d: %c%d.%04d\n",
+   from->u8[0], from->u8[1], t.minus, t.tempint, t.tempfrac);
 
-  /* We have two message types, UNICAST_TYPE_PING and
-     UNICAST_TYPE_PONG. If we receive a UNICAST_TYPE_PING message, we
-     print out a message and return a UNICAST_TYPE_PONG. */
-  if(msg->type == UNICAST_TYPE_PING) {
-    printf("unicast ping received from %d.%d\n",
-           from->u8[0], from->u8[1]);
-    msg->type = UNICAST_TYPE_PONG;
-    packetbuf_copyfrom(msg, sizeof(struct unicast_message));
-    /* Send it back to where it came from. */
-    unicast_send(c, from);
-  }
+
+  // /* Grab the pointer to the incoming data. */
+  // msg = packetbuf_dataptr();
+  //
+  // /* We have two message types, UNICAST_TYPE_PING and
+  //    UNICAST_TYPE_PONG. If we receive a UNICAST_TYPE_PING message, we
+  //    print out a message and return a UNICAST_TYPE_PONG. */
+  // if(msg->type == UNICAST_TYPE_PING) {
+  //   printf("unicast ping received from %d.%d\n",
+  //          from->u8[0], from->u8[1]);
+  //   msg->type = UNICAST_TYPE_PONG;
+  //   packetbuf_copyfrom(msg, sizeof(struct unicast_message));
+  //   /* Send it back to where it came from. */
+  //   unicast_send(c, from);
+  // }
 }
 static const struct unicast_callbacks unicast_callbacks = {recv_uc};
+static struct unicast_conn uc;
+
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(broadcast_process, ev, data)
 {
@@ -386,12 +420,67 @@ PROCESS_THREAD(unicast_process, ev, data) //UNICAST SEND!
 
       printf("sending unicast to %d.%d\n", uniOutAdress.u8[0], uniOutAdress.u8[1]);
 
-      msg.type = UNICAST_TYPE_PING;
-      packetbuf_copyfrom(&msg, sizeof(msg));
-      unicast_send(&unicast, &uniOutAdress);
+      globalAdress0ptr = uniOutAdress.u8[0];
+      globalAdress1ptr = uniOutAdress.u8[1];
+
+    //  printf("Global address in UNICAST: %d and %d\n", globalAdress0ptr, &globalAdress0ptr);
+
+      // msg.type = UNICAST_TYPE_PING;
+      // packetbuf_copyfrom(&msg, sizeof(msg));
+      // unicast_send(&unicast, &uniOutAdress);
     }
   }
 
   PROCESS_END();
 }
+
+/*---------------------------------------------------------------------------*/
+PROCESS_THREAD(temp_process, ev, data)
+{
+  static struct etimer et;
+  PROCESS_EXITHANDLER(unicast_close(&uc);)
+
+  PROCESS_BEGIN();
+
+  int16_t raw;
+  uint16_t absraw;
+  int16_t sign;
+  struct temperature t;
+
+  tmp102_init();
+  unicast_open(&uc, 146, &unicast_callbacks);
+
+  while(1) {
+    etimer_set(&et, TMP102_READ_INTERVAL);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+
+    sign = 1;
+    linkaddr_t addr;
+
+    PRINTFDEBUG("Reading Temp...\n");
+    raw = tmp102_read_temp_raw();
+    absraw = raw;
+    if(raw < 0) {		// Perform 2C's if sensor returned negative data
+      absraw = (raw ^ 0xFFFF) + 1;
+      sign = -1;
+    }
+    t.tempint = (absraw >> 8) * sign;
+    t.tempfrac = ((absraw >> 4) % 16) * 625;	// Info in 1/10000 of degree
+    t.minus = ((t.tempint == 0) & (sign == -1)) ? '-' : ' ';
+    packetbuf_copyfrom(&t, sizeof(t));
+
+    addr.u8[0] = globalAdress0ptr; // earlier it was 238
+    addr.u8[1] = globalAdress1ptr;
+
+  //  printf("Global address in TEMPERATURE: %d and %d\n",globalAdress0ptr, &globalAdress0ptr);
+
+    if(!linkaddr_cmp(&addr, &linkaddr_node_addr)) {
+      unicast_send(&uc, &addr);
+      printf("Unicast message sent to: %d.%d  temp: %c%d.%04d\n",addr.u8[0], addr.u8[1], t.minus, t.tempint, t.tempfrac);
+    }
+
+  }
+  PROCESS_END();
+}
+
 /*---------------------------------------------------------------------------*/
