@@ -356,18 +356,31 @@ PROCESS_THREAD(broadcast_process, ev, data)
 
   broadcast_open(&broadcast, 129, &broadcast_call);
 
+
   while(1) {
 
-    /* Send a broadcast every 16 - 32 seconds */
-    etimer_set(&et, CLOCK_SECOND * 16 + random_rand() % (CLOCK_SECOND * 16));
+    /* Delay 2-4 seconds */
+    etimer_set(&et, CLOCK_SECOND * 4 + random_rand() % (CLOCK_SECOND * 4));
 
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
-    msg.seqno = seqno;
-    packetbuf_copyfrom(&msg, sizeof(struct broadcast_message));
+    packetbuf_copyfrom("Hello", 6);
     broadcast_send(&broadcast);
-    seqno++;
+    printf("broadcast message sent\n");
   }
+
+  // while(1) {
+  //
+  //   /* Send a broadcast every 3 - 4 seconds */
+  //   etimer_set(&et, CLOCK_SECOND * 4 + random_rand() % (CLOCK_SECOND * 4)); //Default was 16 16
+  //
+  //   PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+  //
+  //   msg.seqno = seqno;
+  //   packetbuf_copyfrom(&msg, sizeof(struct broadcast_message));
+  //   broadcast_send(&broadcast);
+  //   seqno++;
+  // }
 
   PROCESS_END();
 }
@@ -418,7 +431,7 @@ PROCESS_THREAD(unicast_process, ev, data) //UNICAST SEND!
 
       //   n = list_item_next(n);
 
-      printf("sending unicast to %d.%d\n", uniOutAdress.u8[0], uniOutAdress.u8[1]);
+      //printf("sending unicast to %d.%d\n", uniOutAdress.u8[0], uniOutAdress.u8[1]);
 
       globalAdress0ptr = uniOutAdress.u8[0];
       globalAdress1ptr = uniOutAdress.u8[1];
