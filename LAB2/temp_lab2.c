@@ -274,7 +274,7 @@ for(b = 0; b < totalDevicesNearby; b++)
   if (my_neighbors[b].addr.u8[0] == baseStationAdress0 && my_neighbors[b].addr.u8[1] == baseStationAdress1)
     {
       basenodeLocated = true;
-      printf("-------------------- BASENODE -------------------- \n ----------------- DETECTED -----------------");
+      printf("-------------------- BASENODE -------------------- \n ----------------- DETECTED ----------------- \n");
 
     }
 }
@@ -505,6 +505,12 @@ PROCESS_THREAD(unicast_process, ev, data) //UNICAST SEND!
         //   addr.u8[0] = baseStationAdress0;
         //   addr.u8[1] = baseStationAdress1;
         // }
+        if (basenodeLocated) {
+          printf("Sending to basenode\n");
+          addr.u8[0] = 100; // earlier it was 238
+          addr.u8[1] = 0;
+        }
+
 
         //  printf("Global address in TEMPERATURE: %d and %d\n",globalAdress0ptr, &globalAdress0ptr);
 
