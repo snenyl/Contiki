@@ -122,12 +122,11 @@ uint8_t *globalAdress1ptr;
 /* We first declare our two processes. */
 PROCESS(broadcast_process, "Broadcast process");
 PROCESS(unicast_process, "Unicast process");
-PROCESS(temp_process, "Test Temperature process");
 
 /* The AUTOSTART_PROCESSES() definition specifices what processes to
    start when this module is loaded. We put both our processes
    there. */
-AUTOSTART_PROCESSES(&broadcast_process, &unicast_process, &temp_process);
+AUTOSTART_PROCESSES(&broadcast_process, &unicast_process);
 /*---------------------------------------------------------------------------*/
 /* This function is called whenever a broadcast message is received. */
 static void
@@ -340,8 +339,7 @@ recv_uc(struct unicast_conn *c, const linkaddr_t *from)
   //   unicast_send(c, from);
   // }
 }
-static const struct unicast_callbacks unicast_callbacks = {recv_uc};
-static struct unicast_conn uc;
+
 
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(broadcast_process, ev, data)
@@ -384,14 +382,21 @@ PROCESS_THREAD(broadcast_process, ev, data)
 
   PROCESS_END();
 }
+
+static const struct unicast_callbacks unicast_callbacks = {recv_uc};
+//static struct unicast_conn uc;
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(unicast_process, ev, data) //UNICAST SEND!
 {
+  static struct etimer et;
+//  PROCESS_EXITHANDLER(unicast_close(&uc);)
   PROCESS_EXITHANDLER(unicast_close(&unicast);)
 
   PROCESS_BEGIN();
 
   unicast_open(&unicast, 146, &unicast_callbacks);
+  tmp102_init();
+
 
   while(1) {
     static struct etimer et;
@@ -399,9 +404,16 @@ PROCESS_THREAD(unicast_process, ev, data) //UNICAST SEND!
     struct neighbor *n;
     int randneighbor, i;
 
-    etimer_set(&et, CLOCK_SECOND * 8 + random_rand() % (CLOCK_SECOND * 8));
+    int16_t raw;
+    uint16_t absraw;
+    int16_t sign;
+    struct temperature t;
 
+
+    //etimer_set(&et, CLOCK_SECOND * 8 + random_rand() % (CLOCK_SECOND * 8));
+    etimer_set(&et, TMP102_READ_INTERVAL);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+//    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
     // /* Pick a random neighbor from our list and send a unicast message to it. */
     // if(list_length(neighbors_list) > 0) {
@@ -423,6 +435,7 @@ PROCESS_THREAD(unicast_process, ev, data) //UNICAST SEND!
      // uniOutAdress.addr.u8[0] = my_neighbors[0].addr.u8[0];
      // uniOutAdress.addr.u8[1] = my_neighbors[0].addr.u8[1];
 
+       printf("Running UNICAST PROCESS \n");
 
       // randneighbor = random_rand() % list_length(neighbors_list);
       // n = list_head(neighbors_list);
@@ -441,59 +454,94 @@ PROCESS_THREAD(unicast_process, ev, data) //UNICAST SEND!
       // msg.type = UNICAST_TYPE_PING;
       // packetbuf_copyfrom(&msg, sizeof(msg));
       // unicast_send(&unicast, &uniOutAdress);
-    }
+      /*
+      TEMPERATURE
+      */
+
+
+
+        sign = 1;
+        linkaddr_t addr;
+
+        PRINTFDEBUG("Reading Temp...\n");
+        raw = tmp102_read_temp_raw();
+        absraw = raw;
+        if(raw < 0)
+          {		// Perform 2C's if sensor returned negative data
+            absraw = (raw ^ 0xFFFF) + 1;
+            sign = -1;
+          }
+        t.tempint = (absraw >> 8) * sign;
+        t.tempfrac = ((absraw >> 4) % 16) * 625;	// Info in 1/10000 of degree
+        t.minus = ((t.tempint == 0) & (sign == -1)) ? '-' : ' ';
+        packetbuf_copyfrom(&t, sizeof(t));
+
+        addr.u8[0] = globalAdress0ptr; // earlier it was 238
+        addr.u8[1] = globalAdress1ptr;
+
+        //  printf("Global address in TEMPERATURE: %d and %d\n",globalAdress0ptr, &globalAdress0ptr);
+
+          if(!linkaddr_cmp(&addr, &linkaddr_node_addr))
+            {
+              unicast_send(&unicast, &addr);
+              printf("Unicast message sent to: %d.%d  temp: %c%d.%04d\n",addr.u8[0], addr.u8[1], t.minus, t.tempint, t.tempfrac);
+            }
+
+      }
+
   }
 
   PROCESS_END();
 }
+
 
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(temp_process, ev, data)
-{
-  static struct etimer et;
-  PROCESS_EXITHANDLER(unicast_close(&uc);)
-
-  PROCESS_BEGIN();
-
-  int16_t raw;
-  uint16_t absraw;
-  int16_t sign;
-  struct temperature t;
-
-  tmp102_init();
-  unicast_open(&uc, 146, &unicast_callbacks);
-
-  while(1) {
-    etimer_set(&et, TMP102_READ_INTERVAL);
-    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-
-    sign = 1;
-    linkaddr_t addr;
-
-    PRINTFDEBUG("Reading Temp...\n");
-    raw = tmp102_read_temp_raw();
-    absraw = raw;
-    if(raw < 0) {		// Perform 2C's if sensor returned negative data
-      absraw = (raw ^ 0xFFFF) + 1;
-      sign = -1;
-    }
-    t.tempint = (absraw >> 8) * sign;
-    t.tempfrac = ((absraw >> 4) % 16) * 625;	// Info in 1/10000 of degree
-    t.minus = ((t.tempint == 0) & (sign == -1)) ? '-' : ' ';
-    packetbuf_copyfrom(&t, sizeof(t));
-
-    addr.u8[0] = globalAdress0ptr; // earlier it was 238
-    addr.u8[1] = globalAdress1ptr;
-
-  //  printf("Global address in TEMPERATURE: %d and %d\n",globalAdress0ptr, &globalAdress0ptr);
-
-    if(!linkaddr_cmp(&addr, &linkaddr_node_addr)) {
-      unicast_send(&uc, &addr);
-      printf("Unicast message sent to: %d.%d  temp: %c%d.%04d\n",addr.u8[0], addr.u8[1], t.minus, t.tempint, t.tempfrac);
-    }
-
-  }
-  PROCESS_END();
-}
+// PROCESS_THREAD(temp_process, ev, data)
+// {
+//   static struct etimer et;
+//   PROCESS_EXITHANDLER(unicast_close(&uc);)
+//
+//   PROCESS_BEGIN();
+//
+//   int16_t raw;
+//   uint16_t absraw;
+//   int16_t sign;
+//   struct temperature t;
+//
+//   tmp102_init();
+//   unicast_open(&uc, 146, &unicast_callbacks);
+//
+//   while(1) {
+//     etimer_set(&et, TMP102_READ_INTERVAL);
+//     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+//
+//     sign = 1;
+//     linkaddr_t addr;
+//
+//     PRINTFDEBUG("Reading Temp...\n");
+//     raw = tmp102_read_temp_raw();
+//     absraw = raw;
+//     if(raw < 0) {		// Perform 2C's if sensor returned negative data
+//       absraw = (raw ^ 0xFFFF) + 1;
+//       sign = -1;
+//     }
+//     t.tempint = (absraw >> 8) * sign;
+//     t.tempfrac = ((absraw >> 4) % 16) * 625;	// Info in 1/10000 of degree
+//     t.minus = ((t.tempint == 0) & (sign == -1)) ? '-' : ' ';
+//     packetbuf_copyfrom(&t, sizeof(t));
+//
+//     addr.u8[0] = globalAdress0ptr; // earlier it was 238
+//     addr.u8[1] = globalAdress1ptr;
+//
+//   //  printf("Global address in TEMPERATURE: %d and %d\n",globalAdress0ptr, &globalAdress0ptr);
+//
+//     if(!linkaddr_cmp(&addr, &linkaddr_node_addr)) {
+//       unicast_send(&uc, &addr);
+//       printf("Unicast message sent to: %d.%d  temp: %c%d.%04d\n",addr.u8[0], addr.u8[1], t.minus, t.tempint, t.tempfrac);
+//     }
+//
+//   }
+//   PROCESS_END();
+// }
 
 /*---------------------------------------------------------------------------*/
