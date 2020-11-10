@@ -76,6 +76,9 @@ struct temperature{
 
 static struct neighbor my_neighbors[MAX_NEIGHBORS] = { 0 };
 uint8_t totalDevicesNearby = 0;
+uint8_t baseStationAdress0 = 100;
+uint8_t baseStationAdress1 = 0;
+bool basenodeLocated;
 
 
 /* This MEMB() definition defines a memory pool from which we allocate
@@ -262,9 +265,24 @@ printf("Second frend LQI: %i with adress %i.%i\n", my_neighbors[1].last_lqi, my_
 printf("Third frend LQI: %i with adress %i.%i\n", my_neighbors[2].last_lqi, my_neighbors[2].addr.u8[0], my_neighbors[2].addr.u8[1]);
 
 
-//Variables for sort (Type: Bubblesort)
+
+//printf("Basenode located? %d\n", basenodeLocated);
+int b;
+
+for(b = 0; b < totalDevicesNearby; b++)
+{
+  if (my_neighbors[b].addr.u8[0] == baseStationAdress0 && my_neighbors[b].addr.u8[1] == baseStationAdress1)
+    {
+      basenodeLocated = true;
+      printf("-------------------- BASENODE -------------------- \n ----------------- DETECTED -----------------");
+
+    }
+}
+
+//Variables for sort (Type: Bubblesort) and Basenodefinder
 int iiii, j, tempSortLQI, tempSortAddress0, tempSortAddress1;
 bool swapped;
+
 
 for(iiii = 0; iiii < totalDevicesNearby - 1; iiii++) // to keep track of number of iteration
   {
@@ -273,7 +291,7 @@ for(iiii = 0; iiii < totalDevicesNearby - 1; iiii++) // to keep track of number 
     {
 
     // swap if any element is greater than its adjacent element
-    if(my_neighbors[j].last_lqi > my_neighbors[j + 1].last_lqi)
+    if(my_neighbors[j].last_lqi < my_neighbors[j + 1].last_lqi)
       {
         tempSortLQI = my_neighbors[j].last_lqi;
         tempSortAddress0 = my_neighbors[j].addr.u8[0];
@@ -287,10 +305,13 @@ for(iiii = 0; iiii < totalDevicesNearby - 1; iiii++) // to keep track of number 
 
     }
 
+
   // if swapping of two elements does not happen then break
   if(swapped == false)
   break;
   }
+
+
 
 
 
@@ -478,6 +499,12 @@ PROCESS_THREAD(unicast_process, ev, data) //UNICAST SEND!
 
         addr.u8[0] = globalAdress0ptr; // earlier it was 238
         addr.u8[1] = globalAdress1ptr;
+
+
+        // if (basenodeLocated) {
+        //   addr.u8[0] = baseStationAdress0;
+        //   addr.u8[1] = baseStationAdress1;
+        // }
 
         //  printf("Global address in TEMPERATURE: %d and %d\n",globalAdress0ptr, &globalAdress0ptr);
 
