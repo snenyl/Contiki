@@ -201,8 +201,8 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
          (int)(((100UL * n->avg_seqno_gap) / SEQNO_EWMA_UNITY) % 100));
 
 
-  printf("This is the last link Quality: %u \n",
-        packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
+  // printf("This is the last link Quality: %u \n",
+  //       packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
 
   if (1) {
     /* code */
@@ -248,16 +248,17 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 
 
   //function for sorting based of LQI
-  uint8_t arraySize = 3; //totalDevicesNearby
+//  uint8_t arraySize = 3; //totalDevicesNearby
   uint8_t sortOutput0 = 0;
   uint8_t sortOutput1 = 0;
 
-
-  for(iii = 0; iii < arraySize; iii++){
+  printf("Addresses: ");
+  for(iii = 0; iii < totalDevicesNearby; iii++){
     sortOutput0 = my_neighbors[iii].addr.u8[0];
     sortOutput1 = my_neighbors[iii].addr.u8[1];
-    printf("Addresses: %i.%i\n", sortOutput0,sortOutput1);
+    printf(" %i.%i,", sortOutput0,sortOutput1);
   }
+  printf("\n");
 
 //Print the varables
 printf("First frend LQI: %i with adress %i.%i\n", my_neighbors[0].last_lqi, my_neighbors[0].addr.u8[0], my_neighbors[0].addr.u8[1]);
@@ -456,7 +457,7 @@ PROCESS_THREAD(unicast_process, ev, data) //UNICAST SEND!
      // uniOutAdress.addr.u8[0] = my_neighbors[0].addr.u8[0];
      // uniOutAdress.addr.u8[1] = my_neighbors[0].addr.u8[1];
 
-       printf("Running UNICAST PROCESS \n");
+       // printf("Running UNICAST PROCESS \n");
 
       // randneighbor = random_rand() % list_length(neighbors_list);
       // n = list_head(neighbors_list);
